@@ -27,45 +27,119 @@
 //Data pins
 #define RTC_SDA 4
 #define RTC_SCL 5
-
 #define DHT_DEV 0
 #define DHTTYPE DHT22
 
 /******************** OBJECTS ************************/
-// Instantiate the DHT sensor object
-DHT sensorOne(DHT_DEV, DHTTYPE);
-
-// Instantiate the uRTCLib rtc object with device address of 0x68
-uRTCLib rtc(0x68);
-
-// Create AsyncWebServer object on port 80
-AsyncWebServer server(80);
-
-// Array of days defining the week
-Day *allDay = new Day[7];
+DHT sensorOne(DHT_DEV, DHTTYPE);            // Instantiate the DHT sensor object
+uRTCLib rtc(0x68);                          // Instantiate the uRTCLib rtc object with device address of 0x68
+AsyncWebServer server(80);                  // Create AsyncWebServer object on port 80
+Day *allDay = new Day[7];                   // Array of days defining the week
 
 /******************** GLOBALS ************************/
 // Loop time keeping instead of using delays
-unsigned long previousMillis = 0, currentMillis = 0;  // will store last time DHT was updated
-long interval = 1000;                                 // interval at which to flash the LED on GPIO (milliseconds)
+unsigned long currentMillis = 0;            // This will store the current time in milliseconds
+unsigned long previousMillisLED = 0;        // Store last time LED was updated
+unsigned long previousMillisTimer = 0;      // Store last time Timer was updated
+long intervalLED = 1000;                    // Intervals at which the LED on GPIO2 flash in (milliseconds)
+const long intervalTimer 1000;              // Timer interval to check when it's time to water
 
 // SSID and PSK - Replace with your network credentials -- Yeah yeah, I know - tisk tisk!
 String ssid = "SSID";
 String password = "PSK";
 
-String sprayState, mistState;                         // Stores spraying state
-int heartBeat = LOW;                                  // Stores LED Flashing state state
-uint8_t newDataFlag = 0;                              // Flag to store that new data came in
+String sprayState, mistState;               // Stores spraying state
+uint8_t newDataFlag = 0;                    // Flag to store that new data came in
 
 /******************** METHODS ************************/
-String getTemperature(){
-  float temperature = sensorOne.readTemperature();
-  return String(temperature);
-}
+// Initialise Serial interafce
+void initSerial(){
+  Serial.begin(115200);
   
-String getHumidity(){
-  float humidity = sensorOne.readHumidity();
-  return String(humidity);
+  Serial.print("\n\n");
+}
+
+void initGPIO(){
+  // Setting GPIO direction - OUTPUT
+  pinMode(PUMP, OUTPUT);
+  pinMode(MIST, OUTPUT);
+  pinMode(SPRAY, OUTPUT);
+  pinMode(WIFI_OK, OUTPUT);
+  pinMode(ESPLED, OUTPUT);
+
+  // Init pin state
+  digitalWrite(PUMP, LOW);
+  digitalWrite(MIST, LOW);
+  digitalWrite(SPRAY, LOW);
+  digitalWrite(WIFI_OK, LOW);
+  digitalWrite(ESPLED, LOW);
+
+  // Setting GPIO direction - INPUT
+  pinMode(WATER_LEVEL, INPUT);
+}
+
+// Initiate the i2c bus with GPIO04=SDA and GPIO05=SCL on the ESP8266.
+void initI2C(){
+  Wire.begin(RTC_SDA, RTC_SCL);
+}
+
+// Initialise and connect to Wi-Fi
+void initWifi(){
+  WiFi.begin(ssid, password);
+  Serial.print(F("Connecting to WiFi."));
+  int timeOut = 0;
+  while (WiFi.status() != WL_CONNECTED){
+    if(timeOut == 15){
+      Serial.println(F("An Error has occurred while trying to connect to your wireless network.\nPlease check your SSID and PSK or ensure AP is in range!"));
+      return;
+    }else{
+      delay(1000);
+      Serial.print(F("."));
+    }
+    timeOut++;
+  }
+
+  // Check if we have connected to an AP and print ESP Local IP Address
+  if(WiFi.status() == WL_CONNECTED){
+    Serial.print(F("\nConnected!\nIP Address :: "));
+    Serial.println(WiFi.localIP());
+    digitalWrite(WIFI_OK, HIGH);
+  }
+}
+
+// Setup sensor pins and set pull timings and test if MCU can communicate with the sensor
+void initDHT(){
+  Serial.println(F("Connecting to DHT Sensors."));
+  for(int i = 0; i < 5 ; ++i){
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.print("\n");
+  sensorOne.begin();
+  if(isnan(sensorOne.readHumidity())||isnan(sensorOne.readTemperature())){
+    Serial.println(F("Failed to read from DHT sensor. Try checking the connection!"));
+    intervalLED = 500;
+  }
+}
+
+// Initialize SPIFFS
+void inisSPIFFS(){
+  Serial.println(F("Mounting SPIFFS."));
+  if(!SPIFFS.begin()){
+    Serial.println(F("An Error has occurred while mounting SPIFFS"));
+    return;
+  }
+}
+
+// Select the valve we would like to trun on and the pump at the same time.
+void sparyState(int valve, int onOrOff){
+  if(onOrOff == 1){
+    digitalWrite(valve, HIGH);
+    digitalWrite(PUMP, HIGH);
+  }else if(onOrOff == 0){
+    digitalWrite(PUMP, LOW);
+    digitalWrite(valve, LOW);
+  }
 }
 
 // Replaces placeholder with state values
@@ -93,6 +167,16 @@ String processor(const String& var){
   }else if (var == "HUMID"){
     return getHumidity();
   } 
+}
+
+String getTemperature(){
+  float temperature = sensorOne.readTemperature();
+  return String(temperature);
+}
+  
+String getHumidity(){
+  float humidity = sensorOne.readHumidity();
+  return String(humidity);
 }
 
 // This method is to split up the string that is received from the webform. It uses a combination
@@ -125,96 +209,6 @@ void storeFormValues(std::string &data){
   allDay[dayt-1].setAll(dayActive,mistActive,sprayActive,startTime_H,startTime_M,
                             mistDuration,sprayDuration);
   newDataFlag = 1;
-}
-
-// Select the valve we would like to trun on and the pump at the same time.
-void sparyState(int valve, int onOrOff){
-  if(onOrOff == 1){
-    digitalWrite(valve, HIGH);
-    digitalWrite(PUMP, HIGH);
-  }else if(onOrOff == 0){
-    digitalWrite(PUMP, LOW);
-    digitalWrite(valve, LOW);
-  }
-}
-
-// Initialise Serial interafce
-void initSerial(){
-  Serial.begin(115200);
-  
-  Serial.print("\n\n");
-}
-
-// Initialise and connect to Wi-Fi
-void initWifi(){
-  WiFi.begin(ssid, password);
-  Serial.print(F("Connecting to WiFi."));
-  int timeOut = 0;
-  while (WiFi.status() != WL_CONNECTED){
-    if(timeOut == 15){
-      Serial.println(F("An Error has occurred while trying to connect to your wireless network.\nPlease check your SSID and PSK or ensure AP is in range!"));
-      return;
-    }else{
-      delay(1000);
-      Serial.print(F("."));
-    }
-    timeOut++;
-  }
-
-  // Check if we have connected to an AP and print ESP Local IP Address
-  if(WiFi.status() == WL_CONNECTED){
-    Serial.print(F("\nConnected!\nIP Address :: "));
-    Serial.println(WiFi.localIP());
-    digitalWrite(WIFI_OK, HIGH);
-  }
-}
-
-void initGPIO(){
-  // Setting GPIO direction - OUTPUT
-  pinMode(PUMP, OUTPUT);
-  pinMode(MIST, OUTPUT);
-  pinMode(SPRAY, OUTPUT);
-  pinMode(WIFI_OK, OUTPUT);
-  pinMode(ESPLED, OUTPUT);
-
-  // Init pin state
-  digitalWrite(PUMP, LOW);
-  digitalWrite(MIST, LOW);
-  digitalWrite(SPRAY, LOW);
-  digitalWrite(WIFI_OK, LOW);
-  digitalWrite(ESPLED, LOW);
-
-  // Setting GPIO direction - INPUT
-  pinMode(WATER_LEVEL, INPUT);
-}
-
-// Initiate the i2c bus with GPIO04=SDA and GPIO05=SCL on the ESP8266.
-void initI2C(){
-  Wire.begin(RTC_SDA, RTC_SCL);
-}
-
-// Setup sensor pins and set pull timings and test if MCU can communicate with the sensor
-void initDHT(){
-  Serial.println(F("Connecting to DHT Sensors."));
-  for(int i = 0; i < 5 ; ++i){
-    Serial.print(".");
-    delay(1000);
-  }
-  Serial.print("\n");
-  sensorOne.begin();
-  if(isnan(sensorOne.readHumidity())||isnan(sensorOne.readTemperature())){
-    Serial.println(F("Failed to read from DHT sensor. Try checking the connection!"));
-    interval = 500;
-  }
-}
-
-// Initialize SPIFFS
-void inisSPIFFS(){
-  Serial.println(F("Mounting SPIFFS."));
-  if(!SPIFFS.begin()){
-    Serial.println(F("An Error has occurred while mounting SPIFFS"));
-    return;
-  }
 }
 
 /********************* SET UP ************************/
@@ -298,27 +292,23 @@ void setup(){
 /********************** LOOP *************************/
 void loop(){  
   currentMillis = millis();
-  if (currentMillis - previousMillis >= interval){
-    // save the last time we printed to serial
-    previousMillis = currentMillis;
 
+  /*---Re-factor---*/
+  if(currentMillis - previousMillisLED >= intervalLED){
+    // Save the last time we printed to serial
+    previousMillisLED = currentMillis;
+    // If the sensor disconnects, change the speed of the heartBeat to indicate to the user
     if(isnan(sensorOne.readHumidity())||isnan(sensorOne.readTemperature())){
-      interval = 500;
+      intervalLED = 500;
     }else{
-      interval = 1000;
+      intervalLED = 1000;
     }
-
-    for (int i = 0; (i < 7) && newDataFlag == 1; ++i){
-      Serial.println(String(i+1) + "," + allDay[i].getData());
-    }
-    newDataFlag = 0;
-
-    // Serial.printf("DHT22 :: Humidity: %.2f%% Temperature: %.2f°C\n", h_01, t_01);
-    
     // Toggle the ESP LED on and off buy reading its current state and inverting that value.
-    digitalWrite(ESPLED, !digitalRead(ESPLED));
-    
-    // Limiting the number of web socket clients
-    // server.cleanupClients();      
+    digitalWrite(ESPLED, !digitalRead(ESPLED));    
+  }
+
+  /*---Re-factor---*/
+  if(currentMillis - previousMillisLED >= intervalTimer){
+    rtc.refresh();
   }
 }
