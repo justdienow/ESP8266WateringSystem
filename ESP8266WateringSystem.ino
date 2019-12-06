@@ -49,7 +49,7 @@ Day *allDay = new Day[7];
 unsigned long previousMillis = 0, currentMillis = 0;  // will store last time DHT was updated
 long interval = 1000;                                 // interval at which to flash the LED on GPIO (milliseconds)
 
-// SSID and PSK - Replace with your network credentials
+// SSID and PSK - Replace with your network credentials -- Yeah yeah, I know - tisk tisk!
 String ssid = "SSID";
 String password = "PSK";
 
