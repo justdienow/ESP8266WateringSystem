@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP8266 Watering system</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+<h1>ESP8266 Watering system</h1>
+<p><strong>Environmental readings</strong></p>
+<p>
+  <span class="sensor-labels">Temp: </span>
+  <span id="temp">%TEMP%</span>
+  <sup class="units">&deg;C</sup>
+</p>
+<p>
+  <span class="sensor-labels">Humidity: </span>
+  <span id="humid">%HUMID%</span>
+  <sup class="units">&#37;</sup>
+</p>
+<p><strong>Manual waterting override</strong></p>
+  <p>Spray state: <strong>%S_STATE%</strong></p>
+  <p>
+    <a href="/s_on"><button class="button">ON</button></a>
+    <a href="/s_off"><button class="button button2">OFF</button></a>
+  </p>
+  <p>Mist state: <strong>%M_STATE%</strong></p>
+  <p>
+    <a href="/m_on"><button class="button">ON</button></a>
+    <a href="/m_off"><button class="button button2">OFF</button></a>
+  </p>
+  <form>
+    <table align="center">
+      <tr>
+        <th colspan="3" align="center">
+          Day<br><select id="days">
+            <option value="1">Sunday</option>
+            <option value="2">Monday</option>
+            <option value="3">Tuesday</option>
+            <option value="4">Wednesday</option>
+            <option value="5">Thursday</option>
+            <option value="6">Friday</option>
+            <option value="7">Saturday</option>
+          </select>
+        </th>
+      </tr>
+      <tr>
+        <th align="center">Day Active<br><input type="checkbox" id="dayAct"></th>
+        <th align="center">Mist Active<br><input type="checkbox" id="mistAct"></th>
+        <th align="center">Spray Active<br><input type="checkbox" id="sprayAct"></th>
+      </tr>
+      <tr>
+        <th align="right">Water Start</th>
+        <td>
+          <input type="number" id="waterStart_hr" min="0" max="23" value="12" style="width: 3em"></input> :
+          <input type="number" id="waterStart_min" min="0" max="59" value="00" style="width: 3em"></input>
+        </td>
+        <th align="left">24hr</th>
+      </tr>
+      <tr>
+        <th align="right">Mist time</th>
+        <td><input type="number" id="mistTime" min="0" max="59" value="5" style="width: 3em"></td>
+        <th align="left">Mins</th>
+      </tr>
+      <tr>
+        <th align="right">Spray time</th>
+        <td><input type="number" id="sprayTime" min="0" max="59" value="5" style="width: 3em"></td>
+        <th align="left">Mins</th>
+      </tr>
+      <tr>
+        <td colspan="3" align="center"><button onclick="func()">Submit</button></td>
+      </tr>
+    </table>
+  </form>
+</body>
+<script>
+setInterval(function ( ) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("temp").innerHTML = this.responseText;
+    }
+  };
+  xhttp.open("GET", "/temp", true);
+  xhttp.send();
+}, 10000 );
+
+setInterval(function ( ) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("humid").innerHTML = this.responseText;
+    }
+  };
+  xhttp.open("GET", "/humid", true);
+  xhttp.send();
+}, 10000 );
+
+function func() {
+  var xhttp = new XMLHttpRequest();
+  var formString = document.getElementById("days").value + ",";
+  formString += document.getElementById("dayAct").checked + ",";
+  formString += document.getElementById("mistAct").checked + ",";
+  formString += document.getElementById("sprayAct").checked + ",";
+  formString += document.getElementById("waterStart_hr").value + ",";
+  formString += document.getElementById("waterStart_min").value + ",";
+  formString += document.getElementById("mistTime").value + ",";
+  formString += document.getElementById("sprayTime").value;
+  xhttp.open("POST", "/formString", true);
+  xhttp.send(formString);
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      //alert(this.responseText);
+    }
+  };
+}
+</script>
+</html>
