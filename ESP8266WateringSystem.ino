@@ -54,7 +54,8 @@ String ssid = "SSID";
 String password = "PSK";
 
 String sprayState, mistState;                         // Stores spraying state
-int heartBeat = LOW;                                  // Stores LED Flashing state state 
+int heartBeat = LOW;                                  // Stores LED Flashing state state
+uint8_t newDataFlag = 0;                              // Flag to store that new data came in
 
 /******************** METHODS ************************/
 String getTemperature(){
@@ -113,9 +114,9 @@ void storeFormValues(std::string &data){
   tokenize(data, ',', out);
   
   uint8_t dayt = atoi(out[0].c_str());
-  bool dayActive = (out[1].compare("true") < 0) ? true : false;
-  bool mistActive = (out[2].compare("true") < 0) ? true : false;
-  bool sprayActive = (out[3].compare("true") < 0) ? true : false;
+  bool dayActive = (out[1].compare("true") < 0) ? false : true;
+  bool mistActive = (out[2].compare("true") < 0) ? false : true;
+  bool sprayActive = (out[3].compare("true") < 0) ? false : true;
   uint8_t startTime_H = atoi(out[4].c_str());
   uint8_t startTime_M = atoi(out[5].c_str());
   uint8_t mistDuration = atoi(out[6].c_str()); 
@@ -123,6 +124,7 @@ void storeFormValues(std::string &data){
   
   allDay[dayt-1].setAll(dayActive,mistActive,sprayActive,startTime_H,startTime_M,
                             mistDuration,sprayDuration);
+  newDataFlag = 1;
 }
 
 // Select the valve we would like to trun on and the pump at the same time.
@@ -224,7 +226,7 @@ void setup(){
   initDHT();
   inisSPIFFS();
 
-  for (int i = 0; i < (sizeof(allDay)/sizeof(allDay[0])); ++i){
+  for (int i = 0; i < 7; ++i){
     allDay[i].setAll(false,false,false,12,00+i,5,5);
   }
 
@@ -277,16 +279,16 @@ void setup(){
     request->send_P(200, "text/plain", getHumidity().c_str());
   });
 
-   server.on("/formString", HTTP_POST,[](AsyncWebServerRequest * request){},NULL,[](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
-      std::string formData;
-      for (size_t i = 0; i < len; i++){
-        // Serial.write(data[i]);
-        formData += data[i];
-      }
-      // Serial.println();
-      request->send(200);
-      storeFormValues(formData);
-   });
+  server.on("/formString", HTTP_POST,[](AsyncWebServerRequest * request){},NULL,[](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
+    std::string formData;
+    for (size_t i = 0; i < len; i++){
+      // Serial.write(data[i]);
+      formData += data[i];
+    }
+    // Serial.println();
+    request->send(200);
+    storeFormValues(formData);
+  });
   
   // Start server
   Serial.println(F("Starting web server.."));
@@ -305,6 +307,11 @@ void loop(){
     }else{
       interval = 1000;
     }
+
+    for (int i = 0; (i < 7) && newDataFlag == 1; ++i){
+      Serial.println(String(i+1) + "," + allDay[i].getData());
+    }
+    newDataFlag = 0;
 
     // Serial.printf("DHT22 :: Humidity: %.2f%% Temperature: %.2f°C\n", h_01, t_01);
     

@@ -34,4 +34,5 @@ class Day {
 			uint8_t getSprayDuration();
 			uint8_t getOffSet_Temp();
 			uint8_t getOffSet_humid();
+			String getData();
 	};

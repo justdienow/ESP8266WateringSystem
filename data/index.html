@@ -34,7 +34,7 @@
     <table align="center">
       <tr>
         <th colspan="3" align="center">
-          Day<br><select id="days">
+            Day<br><select id="days">
             <option value="1">Sunday</option>
             <option value="2">Monday</option>
             <option value="3">Tuesday</option>
@@ -69,7 +69,7 @@
         <th align="left">Mins</th>
       </tr>
       <tr>
-        <td colspan="3" align="center"><button onclick="func()">Submit</button></td>
+        <td colspan="3" align="center"><button onclick="sendFormString()">Submit</button></td>
       </tr>
     </table>
   </form>
@@ -97,7 +97,7 @@ setInterval(function ( ) {
   xhttp.send();
 }, 10000 );
 
-function func() {
+function sendFormString() {
   var xhttp = new XMLHttpRequest();
   var formString = document.getElementById("days").value + ",";
   formString += document.getElementById("dayAct").checked + ",";

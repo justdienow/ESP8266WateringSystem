@@ -99,3 +99,13 @@ uint8_t Day::getOffSet_Temp(){
 uint8_t Day::getOffSet_humid(){
 	return _offSet_humid;
 }
+
+String Day::getData(){
+	return String(_dayActive) + "," +
+	String(_mistActive) + "," +
+	String(_sprayActive) + "," +
+	String(_startTime_H) + "," +
+	String(_startTime_M) + "," +
+	String(_mistDuration) + "," +
+	String(_sprayDuration);
+}
