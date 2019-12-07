@@ -30,49 +30,60 @@
     <a href="/m_on"><button class="button">ON</button></a>
     <a href="/m_off"><button class="button button2">OFF</button></a>
   </p>
-  <form>
-    <table align="center">
-      <tr>
-        <th colspan="3" align="center">
-            Day<br><select id="days">
-            <option value="1">Sunday</option>
-            <option value="2">Monday</option>
-            <option value="3">Tuesday</option>
-            <option value="4">Wednesday</option>
-            <option value="5">Thursday</option>
-            <option value="6">Friday</option>
-            <option value="7">Saturday</option>
-          </select>
-        </th>
-      </tr>
-      <tr>
-        <th align="center">Day Active<br><input type="checkbox" id="dayAct"></th>
-        <th align="center">Mist Active<br><input type="checkbox" id="mistAct"></th>
-        <th align="center">Spray Active<br><input type="checkbox" id="sprayAct"></th>
-      </tr>
-      <tr>
-        <th align="right">Water Start</th>
-        <td>
-          <input type="number" id="waterStart_hr" min="0" max="23" value="12" style="width: 3em"></input> :
-          <input type="number" id="waterStart_min" min="0" max="59" value="00" style="width: 3em"></input>
-        </td>
-        <th align="left">24hr</th>
-      </tr>
-      <tr>
-        <th align="right">Mist time</th>
-        <td><input type="number" id="mistTime" min="0" max="59" value="5" style="width: 3em"></td>
-        <th align="left">Mins</th>
-      </tr>
-      <tr>
-        <th align="right">Spray time</th>
-        <td><input type="number" id="sprayTime" min="0" max="59" value="5" style="width: 3em"></td>
-        <th align="left">Mins</th>
-      </tr>
-      <tr>
-        <td colspan="3" align="center"><button onclick="sendFormString()">Submit</button></td>
-      </tr>
-    </table>
-  </form>
+  <p><strong>Current RTC Day and Time</strong></p>
+  <p><span id="dayTime"></span></p>
+  <p><strong>Timer setting</strong></p>
+  <table align="center">
+    <tr>
+      <th colspan="3" align="center">
+          Day<br><select id="days" onchange="receiveFormString()">
+          <option value="1">Sunday</option>
+          <option value="2">Monday</option>
+          <option value="3">Tuesday</option>
+          <option value="4">Wednesday</option>
+          <option value="5">Thursday</option>
+          <option value="6">Friday</option>
+          <option value="7">Saturday</option>
+        </select>
+      </th>
+    </tr>
+    <tr>
+      <th align="center">
+        Day Active<br>
+        <input type="checkbox" id="dayAct">
+      </th>
+      <th align="center">
+        Mist Active<br>
+        <input type="radio" name="g1" id="mistAct">
+      </th>
+      <th align="center">
+        Spray Active<br>
+        <input type="radio" name="g1" id="sprayAct">
+      </th>
+    </tr>
+    <tr>
+      <th align="right">Water Start</th>
+      <td>
+        <input type="number" id="waterStart_hr" min="0" max="23" value="12" style="width: 3em"></input> :
+        <input type="number" id="waterStart_min" min="0" max="59" value="00" style="width: 3em"></input>
+      </td>
+      <th align="left">24hr</th>
+    </tr>
+    <tr>
+      <th align="right">Mist time</th>
+      <td><input type="number" id="mistTime" min="0" max="59" value="5" style="width: 3em"></td>
+      <th align="left">Mins</th>
+    </tr>
+    <tr>
+      <th align="right">Spray time</th>
+      <td><input type="number" id="sprayTime" min="0" max="59" value="5" style="width: 3em"></td>
+      <th align="left">Mins</th>
+    </tr>
+    <tr>
+      <td colspan="3" align="center"><button onclick="sendFormString()">Submit</button></td>
+    </tr>
+  </table>
+  <p><span id="response"></span></p>
 </body>
 <script>
 setInterval(function ( ) {
@@ -97,6 +108,35 @@ setInterval(function ( ) {
   xhttp.send();
 }, 10000 );
 
+setInterval(function ( ) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      var time = this.responseText.substring(this.responseText.indexOf(',')+1, this.responseText.length);
+      var day = "";
+      switch(this.responseText.charAt(0)){
+        case "1":
+          day = "Sunday"; break;
+        case "2":
+          day = "Monday"; break;
+        case "3":
+          day = "Tuesday"; break;
+        case "4":
+          day = "Wednesday"; break;
+        case "5":
+          day = "Thursday"; break;
+        case "6":
+          day = "Friday"; break;
+        case "7":
+          day = "Saturday";
+      }
+      document.getElementById("dayTime").innerHTML = day + ", " + time;
+    }
+  };
+  xhttp.open("GET", "/dayTime", true);
+  xhttp.send();
+}, 1000 );
+
 function sendFormString() {
   var xhttp = new XMLHttpRequest();
   var formString = document.getElementById("days").value + ",";
@@ -107,11 +147,34 @@ function sendFormString() {
   formString += document.getElementById("waterStart_min").value + ",";
   formString += document.getElementById("mistTime").value + ",";
   formString += document.getElementById("sprayTime").value;
+  //alert(formString);
   xhttp.open("POST", "/formString", true);
   xhttp.send(formString);
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
       //alert(this.responseText);
+      document.getElementById("response").innerHTML = this.responseText;
+    }
+  };
+}
+
+function receiveFormString() {
+  document.getElementById("response").innerHTML = "";
+  var xhttp = new XMLHttpRequest();
+  var getDay = document.getElementById("days").value;
+  xhttp.open("POST", "/formStringBack", true);
+  xhttp.send(getDay);
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      //alert(this.responseText);
+      var respArray = this.responseText.split(",");
+      document.getElementById("dayAct").checked = (respArray[0] === 'true');
+      document.getElementById("mistAct").checked = (respArray[1] === 'true');
+      document.getElementById("sprayAct").checked = (respArray[2] === 'true');
+      document.getElementById("waterStart_hr").value = respArray[3];
+      document.getElementById("waterStart_min").value = respArray[4];
+      document.getElementById("mistTime").value = respArray[5];
+      document.getElementById("sprayTime").value = respArray[6];
     }
   };
 }

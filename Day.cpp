@@ -100,10 +100,17 @@ uint8_t Day::getOffSet_humid(){
 	return _offSet_humid;
 }
 
+String Day::boolToString(bool var){
+	if(var)
+		return "true";
+	else
+		return "false";
+}
+
 String Day::getData(){
-	return String(_dayActive) + "," +
-	String(_mistActive) + "," +
-	String(_sprayActive) + "," +
+	return  boolToString(_dayActive) + "," +
+	boolToString(_mistActive) + "," +
+	boolToString(_sprayActive) + "," +
 	String(_startTime_H) + "," +
 	String(_startTime_M) + "," +
 	String(_mistDuration) + "," +

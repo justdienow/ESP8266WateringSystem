@@ -9,6 +9,7 @@ class Day {
 			uint8_t _sprayDuration = 0;
 			uint8_t _offSet_temp = 0;
 			uint8_t _offSet_humid = 0;
+			String boolToString(bool);
 		public:
 			/******* Constructors *******/
 			Day();
