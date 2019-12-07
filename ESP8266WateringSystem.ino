@@ -438,6 +438,11 @@ void setup(){
   server.on("/formStringBack", HTTP_POST,[](AsyncWebServerRequest * request){},NULL,[](AsyncWebServerRequest * request, uint8_t *data, size_t len, size_t index, size_t total) {
     request->send(200, "text/plain", allDay[data[0]-49].getData().c_str());
   });
+
+  //Sending waterLevelOK status data as a string from PROGMEM
+  server.on("/waterLevel", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(waterLevelOK()).c_str());
+  });
   
   // Start server
   Serial.println(F("Starting web server.."));

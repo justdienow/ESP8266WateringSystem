@@ -31,7 +31,9 @@
     <a href="/m_off"><button class="button button2">OFF</button></a>
   </p>
   <p><strong>Current RTC Day and Time</strong></p>
-  <p><span id="dayTime"></span></p>
+  <p><span id="dayTime">Time</span></p>
+  <p><strong>Water level status</strong></p>
+  <p><span id="waterLevel">Unkown</span></p>
   <p><strong>Timer setting</strong></p>
   <table align="center">
     <tr>
@@ -83,7 +85,7 @@
       <td colspan="3" align="center"><button onclick="sendFormString()">Submit</button></td>
     </tr>
   </table>
-  <p><span id="response"></span></p>
+  <p><span id="response">Response</span></p>
 </body>
 <script>
 setInterval(function ( ) {
@@ -105,6 +107,23 @@ setInterval(function ( ) {
     }
   };
   xhttp.open("GET", "/humid", true);
+  xhttp.send();
+}, 10000 );
+
+setInterval(function ( ) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      var water = "Unknown";
+      if(this.responseText === '1'){
+        waterLevel = "OK!";
+      }else if(this.responseText === '0'){
+        waterLevel = "Empty!";
+      }
+      document.getElementById("waterLevel").innerHTML = waterLevel;
+    }
+  };
+  xhttp.open("GET", "/waterLevel", true);
   xhttp.send();
 }, 10000 );
 
@@ -159,7 +178,7 @@ function sendFormString() {
 }
 
 function receiveFormString() {
-  document.getElementById("response").innerHTML = "";
+  document.getElementById("response").innerHTML = "Response";
   var xhttp = new XMLHttpRequest();
   var getDay = document.getElementById("days").value;
   xhttp.open("POST", "/formStringBack", true);
