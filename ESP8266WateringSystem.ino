@@ -50,7 +50,7 @@ unsigned long currentMillis = 0;              // This will store the current tim
 unsigned long previousMillisLED = 0;          // Store last time LED was updated
 unsigned long previousMillisTimer = 0;        // Store last time Timer was updated
 long intervalLED = 1000;                      // Intervals at which the LED on GPIO2 flash in (milliseconds)
-const long intervalTimer = 1000;                // Timer interval to check when it's time to water
+const long intervalTimer = 1000;              // Timer interval to check when it's time to water
 
 // SSID and PSK - Replace with your network credentials -- Yeah yeah, I know - tisk tisk!
 String ssid = "SSID";
@@ -200,23 +200,23 @@ void updateDayTime(){
  * Returns: None
  * ----------------------------------------------------------------------------------------------*/
 void sparyState(int valve, int onOrOff){
-  if(waterLevelOK() != 0){
+//  if(waterLevelOK() != 0){
     if(onOrOff == 1){
-      if(checkValvesState() > 0){
-        digitalWrite(checkValvesState(), LOW);
-      }
+//      if(checkValvesState() > 0){
+//        digitalWrite(checkValvesState(), LOW);
+//      }
       digitalWrite(valve, HIGH);
       digitalWrite(PUMP, HIGH);
       wateringFlag = 1;
     }else if(onOrOff == 0){
       digitalWrite(PUMP, LOW);
       digitalWrite(valve, LOW);
-      if(checkValvesState() > 0){
-        digitalWrite(checkValvesState(), LOW);
-      }
+//      if(checkValvesState() > 0){
+//        digitalWrite(checkValvesState(), LOW);
+//      }
       wateringFlag = 0;
     }
-  }
+//  }
 }
 
 /*-----------------------------------------------------------------------------------------------
@@ -355,6 +355,7 @@ String getDayTime(){
  * Returns: Boolean
  * ----------------------------------------------------------------------------------------------*/
 bool waterLevelOK(){
+  Serial.println("Checking water level!");
   return (digitalRead(WATER_LEVEL) != 0) ? false : true;
 }
 
@@ -371,7 +372,7 @@ void setup(){
 
   // Initialise Day objects in the array visualise that its working
   for(int i = 0; i < 7; ++i){
-    allDay[i].setAll(false,false,false,12,00+i,5,5);
+    allDay[i].setAll(false,false,false,12,00+i,0,0);
   }
 
   // Route for root / web page
@@ -456,6 +457,7 @@ void loop(){
   currentMillis = millis();
 
   if(currentMillis - previousMillisLED >= intervalLED){
+//    Serial.println("In the LED check");
     // Save the last time we printed to serial
     previousMillisLED = currentMillis;
     // If the sensor disconnects, change the speed of the heartBeat to indicate to the user
@@ -469,10 +471,11 @@ void loop(){
   }
 
   if(currentMillis - previousMillisTimer >= intervalTimer){
+//    Serial.println("In the timer check!");
     previousMillisTimer = currentMillis;
     updateDayTime();
     // This block is to turn the valve and pump on
-    if((allDay[dow-1].getDayActive() && waterLevelOK() != 0 && wateringFlag == 0) && manualFlag == 0){
+    if(allDay[dow-1].getDayActive() && waterLevelOK() != 0 && wateringFlag == 0){
       if(hour == allDay[dow-1].getStartTime_H() && minute == allDay[dow-1].getStartTime_M()){
         if(allDay[dow-1].getMistActive()){
           sparyState(MIST, 1);
@@ -485,13 +488,13 @@ void loop(){
     }
 
     // This block is to trun the valve and pump off after a given amount of spray time
-    if((allDay[dow-1].getMistActive() && wateringFlag != 0) && manualFlag == 0){
+    if(allDay[dow-1].getMistActive() && wateringFlag != 0){
       if(mistingTime > 0){
         --mistingTime;
       }else{
         sparyState(MIST, 0);
       }
-    }else if((allDay[dow-1].getSprayActive() && wateringFlag != 0) && manualFlag == 0){
+    }else if(allDay[dow-1].getSprayActive() && wateringFlag != 0){
       if(sparyingTime > 0){
         --sparyingTime;
       }else{
@@ -501,6 +504,7 @@ void loop(){
 
     // This block is to monitor the water level and turn the pump off if the water gets too low
     if(waterLevelOK() == 0){
+      Serial.println("Warn! Turn water off!");
       sparyState(MIST, 0);
       sparyState(SPRAY, 0);
     }
